@@ -16,7 +16,8 @@ import NoteList from "@/components/NoteList/NoteList";
 import Modal from "@/components/Modal/Modal";
 import NoteForm from "@/components/NoteForm/NoteForm";
 import css from "../notes/NotesPage.module.css";
-import Loader from "@/components/Loader/Loader";
+import { Loader } from "@/components/Loader/Loader";
+import { ErrorMessageEmpty } from "@/components/ErrorMessageEmpty/ErrorMessageEmpty";
 import toast from "react-hot-toast";
 import ToastContainer from "@/components/ToastContainer/ToastContainer";
 
@@ -36,12 +37,16 @@ export default function NotesClient({
 
   const queryClient = useQueryClient();
 
-  const { data, isLoading, isError }: UseQueryResult<NotesHttpResponse, Error> =
-    useQuery<NotesHttpResponse>({
-      queryKey: ["notes", page, debouncedSearch],
-      queryFn: () => fetchNotes(debouncedSearch, page),
-      placeholderData: keepPreviousData,
-    });
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+  }: UseQueryResult<NotesHttpResponse, Error> = useQuery<NotesHttpResponse>({
+    queryKey: ["notes", page, debouncedSearch],
+    queryFn: () => fetchNotes(debouncedSearch, page),
+    placeholderData: keepPreviousData,
+  });
 
   const mutation = useMutation({
     mutationFn: (noteData: FormValues) => createNote(noteData),
@@ -56,6 +61,8 @@ export default function NotesClient({
 
   const notes = data?.notes || [];
   const pageCount = data?.totalPages || 1;
+
+  if (isError && error) throw error;
 
   return (
     <div className={css.app}>
@@ -81,20 +88,22 @@ export default function NotesClient({
         </button>
       </header>
 
-      {isLoading ? (
-        <Loader />
-      ) : isError ? (
-        <p>Error loading notes</p>
-      ) : notes.length > 0 ? (
-        <NoteList notes={notes} />
-      ) : (
-        <p>No notes found</p>
+      {isLoading && <Loader />}
+
+      {!isLoading && !isError && (
+        <>
+          {notes.length > 0 ? (
+            <NoteList notes={notes} />
+          ) : (
+            <ErrorMessageEmpty />
+          )}
+        </>
       )}
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
           {mutation.isPending ? (
-            <Loader size={40} color="#0d6efd" />
+            <Loader />
           ) : (
             <NoteForm
               onCancel={() => setIsModalOpen(false)}
