@@ -32,15 +32,11 @@ export const fetchNotes = async (
 };
 
 export const fetchNoteById = async (id: string): Promise<Note> => {
-  const res = await fetch(`${BASE_URL}/notes/${id}`, {
+  const response = await axios.get<Note>(`${BASE_URL}/notes/${id}`, {
     headers,
   });
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch note details");
-  }
-
-  return res.json();
+  return response.data;
 };
 
 export const createNote = async (note: FormValues): Promise<Note> => {

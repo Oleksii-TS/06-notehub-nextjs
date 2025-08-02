@@ -1,34 +1,38 @@
 "use client";
+
 import { useState } from "react";
 import {
   useQuery,
-  UseQueryResult,
-  keepPreviousData,
   useQueryClient,
   useMutation,
+  UseQueryResult,
 } from "@tanstack/react-query";
 import { fetchNotes, createNote, NotesHttpResponse } from "@/lib/api";
-import { FormValues } from "../../types/note";
-import { useDebounce } from "../../hooks/useDebouncedValue";
+import type { FormValues, Note } from "@/types/note";
+import { useDebounce } from "@/hooks/useDebouncedValue";
 import SearchBox from "@/components/SearchBox/SearchBox";
 import Pagination from "@/components/Pagination/Pagination";
 import NoteList from "@/components/NoteList/NoteList";
 import Modal from "@/components/Modal/Modal";
 import NoteForm from "@/components/NoteForm/NoteForm";
-import css from "../notes/NotesPage.module.css";
 import { Loader } from "@/components/Loader/Loader";
 import { ErrorMessageEmpty } from "@/components/ErrorMessageEmpty/ErrorMessageEmpty";
-import toast from "react-hot-toast";
 import ToastContainer from "@/components/ToastContainer/ToastContainer";
+import toast from "react-hot-toast";
+import css from "../notes/NotesPage.module.css";
 
 interface NotesClientProps {
   initialQuery: string;
   initialPage: number;
+  initialNotes: Note[];
+  initialTotalPages: number;
 }
 
 export default function NotesClient({
   initialQuery,
   initialPage,
+  initialNotes,
+  initialTotalPages,
 }: NotesClientProps) {
   const [search, setSearch] = useState(initialQuery);
   const debouncedSearch = useDebounce(search, 500);
@@ -43,12 +47,18 @@ export default function NotesClient({
     isError,
     error,
   }: UseQueryResult<NotesHttpResponse, Error> = useQuery<NotesHttpResponse>({
-    queryKey: ["notes", page, debouncedSearch],
+    queryKey: ["notes", debouncedSearch, page],
     queryFn: () => fetchNotes(debouncedSearch, page),
-    placeholderData: keepPreviousData,
+    initialData:
+      page === initialPage && debouncedSearch === initialQuery
+        ? {
+            notes: initialNotes,
+            totalPages: initialTotalPages,
+          }
+        : undefined,
   });
 
-  const mutation = useMutation({
+  const createNoteMutation = useMutation({
     mutationFn: (noteData: FormValues) => createNote(noteData),
     onSuccess: () => {
       toast.success("Note created successfully");
@@ -71,16 +81,16 @@ export default function NotesClient({
       <header className={css.toolbar}>
         <SearchBox
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+          onChange={(value) => {
+            setSearch(value);
             setPage(1);
           }}
         />
         {pageCount > 1 && (
           <Pagination
-            pageCount={pageCount}
+            totalPages={pageCount}
+            currentPage={page}
             onPageChange={({ selected }) => setPage(selected + 1)}
-            forcePage={page - 1}
           />
         )}
         <button className={css.button} onClick={() => setIsModalOpen(true)}>
@@ -102,7 +112,7 @@ export default function NotesClient({
 
       {isModalOpen && (
         <Modal onClose={() => setIsModalOpen(false)}>
-          {mutation.isPending ? (
+          {createNoteMutation.isPending ? (
             <Loader />
           ) : (
             <NoteForm
