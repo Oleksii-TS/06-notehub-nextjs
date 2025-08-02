@@ -6,6 +6,7 @@ import {
   useQueryClient,
   useMutation,
   UseQueryResult,
+  keepPreviousData,
 } from "@tanstack/react-query";
 import { fetchNotes, createNote, NotesHttpResponse } from "@/lib/api";
 import type { FormValues, Note } from "@/types/note";
@@ -56,6 +57,7 @@ export default function NotesClient({
             totalPages: initialTotalPages,
           }
         : undefined,
+    placeholderData: keepPreviousData,
   });
 
   const createNoteMutation = useMutation({
